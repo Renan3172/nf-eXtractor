@@ -19,7 +19,7 @@ app.add_middleware(
 async def processar_nota(
     imagem: UploadFile = File(...),
     gemini_api_key: str = Form(...),
-    meudanfe_api_key: str = Form(...)
+    meudanfe_api_key: str = Form("")
 ):
     conteudo_imagem = await imagem.read()
     mime_type = imagem.content_type or "image/jpeg"
@@ -52,42 +52,37 @@ async def processar_nota(
         raise HTTPException(status_code=400, detail=f"Erro na API do Gemini: {str(e)}")
 
     try:
-        chave_api = meudanfe_api_key.strip()
+        # Consulta gratuita na API pública ConsultaDanfe (não exige créditos)
+        url_consulta = "https://consultadanfe.com/api/v1/consulta"
         headers = {
-            "Api-Key": chave_api,
-            "Accept": "application/json, application/xml, text/plain"
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": "ExtratorNFe/1.0"
         }
+        payload = {"chave": chave_acesso}
+        res = requests.post(url_consulta, json=payload, headers=headers, timeout=30)
 
-        # Consulta XML na rota pública/gratuita v1 do MeuDanfe
-        url_xml = f"https://api.meudanfe.com.br/v1/fd/get/xml/{chave_acesso}?api_key={chave_api}"
-        res_xml = requests.get(url_xml, headers=headers, timeout=30)
-
-        if res_xml.status_code != 200:
+        if res.status_code != 200:
             raise HTTPException(
-                status_code=res_xml.status_code,
-                detail=f"Erro no MeuDanfe ({res_xml.status_code}): {res_xml.text}"
+                status_code=res.status_code,
+                detail=f"Erro na consulta pública da NF-e ({res.status_code}): {res.text}"
             )
 
-        # Trata retorno em JSON ou XML puro
-        xml_base64 = None
-        content_type_xml = res_xml.headers.get("Content-Type", "")
-        if "application/json" in content_type_xml:
-            dados_xml = res_xml.json()
-            xml_base64 = dados_xml.get("data") or dados_xml.get("xml")
-        else:
-            xml_base64 = base64.b64encode(res_xml.content).decode("utf-8")
+        dados = res.json()
+        xml_texto = dados.get("xml") or dados.get("data", {}).get("xml")
+        pdf_base64 = dados.get("pdf") or dados.get("danfe") or dados.get("data", {}).get("pdf")
 
-        # Consulta PDF (DANFE) na rota v1
-        url_pdf = f"https://api.meudanfe.com.br/v1/fd/get/da/{chave_acesso}?api_key={chave_api}"
-        res_pdf = requests.get(url_pdf, headers=headers, timeout=30)
-        pdf_base64 = None
-        if res_pdf.status_code == 200:
-            content_type_pdf = res_pdf.headers.get("Content-Type", "")
-            if "application/json" in content_type_pdf:
-                dados_pdf = res_pdf.json()
-                pdf_base64 = dados_pdf.get("data") or dados_pdf.get("pdf")
-            else:
-                pdf_base64 = base64.b64encode(res_pdf.content).decode("utf-8")
+        if not xml_texto:
+            raise HTTPException(
+                status_code=404,
+                detail="A consulta retornou resposta, mas o XML da nota não estava disponível (verifique se a nota é recente)."
+            )
+
+        # Converte o XML para Base64 caso venha em texto puro
+        if xml_texto.strip().startswith("<"):
+            xml_base64 = base64.b64encode(xml_texto.encode("utf-8")).decode("utf-8")
+        else:
+            xml_base64 = xml_texto
 
         return {
             "status": "sucesso",
@@ -99,4 +94,4 @@ async def processar_nota(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro ao comunicar com MeuDanfe: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro ao consultar NF-e: {str(e)}")
