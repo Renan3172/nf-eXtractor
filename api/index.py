@@ -31,7 +31,7 @@ async def processar_nota(
             "Retorne apenas os 44 números seguidos, sem espaços, pontos, traços ou qualquer texto adicional."
         )
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.8-flash",
             contents=[
                 types.Part.from_bytes(data=conteudo_imagem, mime_type=mime_type),
                 prompt,
