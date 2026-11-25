@@ -3,191 +3,84 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Automação CT-e / NF-e - Extrator XML & PDF</title>
+  <title>Extrator NF-e — XML e DANFE</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col items-center justify-center p-4">
 
-  <header class="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center">
-    <div>
-      <h1 class="text-lg font-bold text-slate-900">Extrator Fiscal NF-e</h1>
-      <p class="text-xs text-slate-500">Leitura de Chave via IA + Download XML/PDF</p>
-    </div>
-    <button onclick="toggleConfig()" class="px-4 py-2 text-sm font-medium bg-slate-100 hover:bg-slate-200 rounded-lg border border-slate-300 transition">
-      Configurar APIs
-    </button>
-  </header>
-
-  <section id="painel-config" class="hidden bg-white border-b border-slate-200 px-6 py-5 shadow-sm">
-    <div class="max-w-3xl mx-auto space-y-4">
-      <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-600">Credenciais de Integração (Salvas apenas neste navegador)</h2>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label class="block text-xs font-medium text-slate-700 mb-1">Google Gemini API Key</label>
-          <input type="password" id="gemini-key" placeholder="AIzaSy..." class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-600" />
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-slate-700 mb-1">MeuDanfe API Key</label>
-          <input type="password" id="meudanfe-key" placeholder="Sua chave do MeuDanfe" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-600" />
-        </div>
-      </div>
-      <div class="flex justify-end gap-2">
-        <button onclick="salvarChaves()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition">
-          Salvar Credenciais
-        </button>
-      </div>
-    </div>
-  </section>
-
-  <main class="flex-1 max-w-3xl w-full mx-auto px-6 py-8 space-y-6">
-    <div id="dropzone" onclick="document.getElementById('file-input').click()" class="border-2 border-dashed border-slate-300 hover:border-blue-500 bg-white rounded-xl p-10 text-center cursor-pointer transition">
-      <input type="file" id="file-input" accept="image/*" class="hidden" onchange="selecionarArquivo(event)" />
-      <p class="text-base font-medium text-slate-700">Clique para selecionar a foto da nota ou pressione <kbd class="px-2 py-1 bg-slate-100 border rounded text-xs">Ctrl + V</kbd></p>
-      <p class="text-xs text-slate-400 mt-2">Suporta imagens JPG, PNG ou WEBP enviadas/recebidas pelo WhatsApp</p>
-      <img id="preview" class="hidden max-h-64 mx-auto mt-4 rounded-lg border border-slate-200" />
-    </div>
-
-    <button id="btn-processar" onclick="enviarNota()" class="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-medium rounded-xl transition disabled:opacity-50">
-      Extrair Chave e Baixar XML / PDF
-    </button>
-
-    <div id="status-box" class="hidden p-4 rounded-xl text-sm"></div>
-
-    <div id="resultado-box" class="hidden bg-white border border-slate-200 rounded-xl p-6 space-y-4">
+  <div class="w-full max-w-xl bg-white rounded-2xl shadow-lg p-6 space-y-6">
+    <!-- Cabeçalho -->
+    <div class="flex items-center justify-between border-b border-slate-200 pb-4">
       <div>
-        <span class="text-xs font-semibold uppercase text-slate-400">Chave de Acesso Identificada</span>
-        <p id="chave-texto" class="font-mono text-base font-bold text-slate-900 break-all mt-1"></p>
+        <h1 class="text-xl font-bold text-slate-900">Extrator de NF-e</h1>
+        <p class="text-sm text-slate-500">Envie ou cole a imagem da DANFE para baixar XML e PDF</p>
       </div>
-      <div class="flex flex-wrap gap-3 pt-2">
-        <button id="btn-xml" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition">
-          Baixar XML
-        </button>
-        <button id="btn-pdf" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition">
-          Baixar PDF (DANFE)
-        </button>
+      <button
+        id="btnConfig"
+        type="button"
+        title="Configurar Chave API"
+        class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
+      >
+        ⚙️
+      </button>
+    </div>
+
+    <!-- Aviso se a chave do Gemini não estiver configurada -->
+    <div id="avisoChave" class="hidden bg-amber-50 border border-amber-300 text-amber-800 text-sm rounded-lg p-3">
+      Configure sua <strong>Chave de API do Google Gemini</strong> clicando no ícone ⚙️ acima antes de enviar uma nota.
+    </div>
+
+    <!-- Área de Upload / Colar -->
+    <div
+      id="dropZone"
+      class="border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-xl p-8 text-center cursor-pointer transition bg-slate-50"
+    >
+      <input id="fileInput" type="file" accept="image/*" class="hidden" />
+      <div id="placeholderUpload" class="space-y-2">
+        <p class="text-slate-700 font-medium">Arraste a imagem aqui, clique para selecionar ou pressione <kbd class="px-1.5 py-0.5 bg-slate-200 rounded text-xs">Ctrl + V</kbd></p>
+        <p class="text-xs text-slate-400">Suporta PNG, JPG e WEBP</p>
+      </div>
+      <div id="previewContainer" class="hidden space-y-3">
+        <img id="previewImg" src="" alt="Prévia da DANFE" class="max-h-60 mx-auto rounded-lg shadow-sm border border-slate-200" />
+        <p id="fileName" class="text-xs text-slate-500 truncate"></p>
       </div>
     </div>
-  </main>
 
-  <script>
-    let arquivoAtual = null;
+    <!-- Botão Principal -->
+    <button
+      id="btnProcessar"
+      type="button"
+      disabled
+      class="w-full py-3 px-4 rounded-xl font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition flex items-center justify-center gap-2"
+    >
+      <span id="btnTexto">Extrair Chave e Baixar XML / PDF</span>
+      <svg id="spinner" class="hidden animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+      </svg>
+    </button>
 
-    window.onload = () => {
-      const gKey = localStorage.getItem('gemini_api_key') || '';
-      const mKey = localStorage.getItem('meudanfe_api_key') || '';
-      document.getElementById('gemini-key').value = gKey;
-      document.getElementById('meudanfe-key').value = mKey;
-      if (!gKey || !mKey) {
-        document.getElementById('painel-config').classList.remove('hidden');
-      }
-    };
+    <!-- Mensagem de Erro -->
+    <div id="boxErro" class="hidden bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl p-4 break-words"></div>
 
-    function toggleConfig() {
-      document.getElementById('painel-config').classList.toggle('hidden');
-    }
+    <!-- Resultado -->
+    <div id="boxResultado" class="hidden bg-emerald-50 border border-emerald-200 rounded-xl p-4 space-y-4">
+      <div>
+        <span class="text-xs font-semibold uppercase tracking-wide text-emerald-700">Chave de Acesso (44 dígitos)</span>
+        <div class="mt-1 flex items-center gap-2">
+          <code id="chaveTexto" class="flex-1 bg-white border border-emerald-200 rounded-lg px-3 py-2 text-xs sm:text-sm font-mono text-slate-800 break-all"></code>
+          <button
+            id="btnCopiar"
+            type="button"
+            class="px-3 py-2 text-xs font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition"
+          >
+            Copiar
+          </button>
+        </div>
+      </div>
 
-    function salvarChaves() {
-      const gKey = document.getElementById('gemini-key').value.trim();
-      const mKey = document.getElementById('meudanfe-key').value.trim();
-      localStorage.setItem('gemini_api_key', gKey);
-      localStorage.setItem('meudanfe_api_key', mKey);
-      toggleConfig();
-      mostrarStatus('Credenciais salvas no navegador com sucesso.', 'bg-emerald-50 text-emerald-800 border border-emerald-200');
-    }
-
-    window.addEventListener('paste', (e) => {
-      const items = e.clipboardData.items;
-      for (let item of items) {
-        if (item.type.indexOf('image') !== -1) {
-          carregarImagem(item.getAsFile());
-        }
-      }
-    });
-
-    function selecionarArquivo(e) {
-      if (e.target.files.length > 0) {
-        carregarImagem(e.target.files[0]);
-      }
-    }
-
-    function carregarImagem(file) {
-      arquivoAtual = file;
-      const preview = document.getElementById('preview');
-      preview.src = URL.createObjectURL(file);
-      preview.classList.remove('hidden');
-    }
-
-    function mostrarStatus(msg, classes) {
-      const box = document.getElementById('status-box');
-      box.className = `p-4 rounded-xl text-sm ${classes}`;
-      box.textContent = msg;
-      box.classList.remove('hidden');
-    }
-
-    function baixarBase64(base64Data, nomeArquivo, mimeType) {
-      const link = document.createElement('a');
-      link.href = `data:${mimeType};base64,${base64Data}`;
-      link.download = nomeArquivo;
-      link.click();
-    }
-
-    async function enviarNota() {
-      const gKey = localStorage.getItem('gemini_api_key');
-      const mKey = localStorage.getItem('meudanfe_api_key');
-
-      if (!gKey || !mKey) {
-        document.getElementById('painel-config').classList.remove('hidden');
-        mostrarStatus('Configure suas chaves de API do Gemini e do MeuDanfe antes de continuar.', 'bg-amber-50 text-amber-800 border border-amber-200');
-        return;
-      }
-
-      if (!arquivoAtual) {
-        mostrarStatus('Selecione ou cole (Ctrl+V) a foto da nota fiscal primeiro.', 'bg-amber-50 text-amber-800 border border-amber-200');
-        return;
-      }
-
-      const btn = document.getElementById('btn-processar');
-      btn.disabled = true;
-      btn.textContent = 'Processando imagem com Gemini e consultando MeuDanfe...';
-      document.getElementById('resultado-box').classList.add('hidden');
-      mostrarStatus('Lendo chave de acesso e buscando documentos...', 'bg-blue-50 text-blue-800 border border-blue-200');
-
-      const formData = new FormData();
-      formData.append('imagem', arquivoAtual);
-      formData.append('gemini_api_key', gKey);
-      formData.append('meudanfe_api_key', mKey);
-
-      try {
-        const res = await fetch('/api/processar-nota', {
-          method: 'POST',
-          body: formData
-        });
-        const data = await res.json();
-
-        if (!res.ok) {
-          throw new Error(data.detail || 'Erro ao processar a nota.');
-        }
-
-        document.getElementById('status-box').classList.add('hidden');
-        document.getElementById('chave-texto').textContent = data.chave_acesso;
-        document.getElementById('resultado-box').classList.remove('hidden');
-
-        if (data.xml_base64) {
-          document.getElementById('btn-xml').onclick = () => baixarBase64(data.xml_base64, `${data.chave_acesso}.xml`, 'application/xml');
-          baixarBase64(data.xml_base64, `${data.chave_acesso}.xml`, 'application/xml');
-        }
-
-        if (data.pdf_base64) {
-          document.getElementById('btn-pdf').onclick = () => baixarBase64(data.pdf_base64, `${data.chave_acesso}.pdf`, 'application/pdf');
-        }
-
-      } catch (err) {
-        mostrarStatus(err.message, 'bg-red-50 text-red-800 border border-red-200');
-      } finally {
-        btn.disabled = false;
-        btn.textContent = 'Extrair Chave e Baixar XML / PDF';
-      }
-    }
-  </script>
-</body>
-</html>
+      <div class="flex flex-wrap gap-3">
+        <button
+          id="btnBaixarXml"
+          type="button"
+          class="hidden flex-1 py-2.5 px-4 rounded-lg bg-slate-900 hover:bg-slate-
