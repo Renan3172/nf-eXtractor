@@ -51,22 +51,35 @@ async def processar_nota(
         raise HTTPException(status_code=400, detail=f"Erro na API do Gemini: {str(e)}")
 
     try:
-        url_meudanfe = f"https://api.meudanfe.com.br/v2/fd/get/xml/{chave_acesso}"
         headers = {
             "Api-Key": meudanfe_api_key.strip(),
             "Accept": "application/json"
         }
+
+        # Passo A: Solicitar a busca/adição da NF-e na base do MeuDanfe (obrigatório na API v2)
+        url_add = f"https://api.meudanfe.com.br/v2/fd/add/{chave_acesso}"
+        res_add = requests.put(url_add, headers=headers, timeout=30)
+
+        if res_add.status_code not in (200, 201, 202):
+            raise HTTPException(
+                status_code=res_add.status_code,
+                detail=f"Erro ao registrar nota no MeuDanfe ({res_add.status_code}): {res_add.text}"
+            )
+
+        # Passo B: Baixar o XML
+        url_meudanfe = f"https://api.meudanfe.com.br/v2/fd/get/xml/{chave_acesso}"
         res_xml = requests.get(url_meudanfe, headers=headers, timeout=30)
 
         if res_xml.status_code != 200:
             raise HTTPException(
                 status_code=res_xml.status_code,
-                detail=f"Erro no MeuDanfe ({res_xml.status_code}): {res_xml.text}"
+                detail=f"Erro ao baixar XML no MeuDanfe ({res_xml.status_code}): {res_xml.text}"
             )
 
         dados_xml = res_xml.json()
         xml_base64 = dados_xml.get("data") or dados_xml.get("xml")
 
+        # Passo C: Baixar o PDF (DANFE)
         url_pdf = f"https://api.meudanfe.com.br/v2/fd/get/da/{chave_acesso}"
         res_pdf = requests.get(url_pdf, headers=headers, timeout=30)
         pdf_base64 = None
