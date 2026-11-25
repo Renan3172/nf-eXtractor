@@ -1,5 +1,4 @@
 import re
-import time
 import base64
 import requests
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
@@ -28,12 +27,16 @@ async def processar_nota(
     try:
         client = genai.Client(api_key=gemini_api_key.strip())
         prompt = (
-            "Analise esta imagem de uma DANFE ou documento fiscal. "
-            "Extraia EXCLUSIVAMENTE os 44 dígitos numéricos da Chave de Acesso da NF-e. "
-            "Retorne apenas os 44 números seguidos, sem espaços, pontos, traços ou qualquer texto adicional."
+            "Extraia EXCLUSIVAMENTE os 44 dígitos numéricos da Chave de Acesso da NF-e nesta imagem. "
+            "Retorne apenas os 44 números seguidos, sem espaços ou texto adicional."
+        )
+        config_rapida = types.GenerateContentConfig(
+            temperature=0.0,
+            max_output_tokens=64,
         )
 
-        modelos_tentativa = ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3-flash"]
+        # Prioriza o modelo mais rápido para evitar timeout na Vercel
+        modelos_tentativa = ["gemini-3.5-flash-lite", "gemini-3.8-flash"]
         response = None
         ultimo_erro = None
 
@@ -45,15 +48,15 @@ async def processar_nota(
                         types.Part.from_bytes(data=conteudo_imagem, mime_type=mime_type),
                         prompt,
                     ],
+                    config=config_rapida,
                 )
                 if response and response.text:
                     break
             except Exception as err:
                 ultimo_erro = err
-                time.sleep(1)
 
         if not response or not response.text:
-            raise ultimo_erro or Exception("Nenhum modelo respondeu no momento.")
+            raise ultimo_erro or Exception("Nenhum modelo respondeu a tempo.")
 
         chave_bruta = response.text.strip()
         chave_acesso = re.sub(r"\D", "", chave_bruta)
@@ -61,7 +64,7 @@ async def processar_nota(
         if len(chave_acesso) != 44:
             raise HTTPException(
                 status_code=422,
-                detail=f"Não foi possível identificar uma chave válida de 44 dígitos. Leitura obtida: '{chave_bruta}'"
+                detail=f"Chave inválida (44 dígitos esperados). Leitura obtida: '{chave_bruta}'"
             )
     except HTTPException:
         raise
@@ -75,8 +78,12 @@ async def processar_nota(
             "Accept": "application/json, application/pdf",
             "User-Agent": "ExtratorNFe/1.0"
         }
-        payload = {"chave": chave_acesso}
-        res = requests.post(url_consulta, json=payload, headers=headers, timeout=30)
+        res = requests.post(
+            url_consulta,
+            json={"chave": chave_acesso},
+            headers=headers,
+            timeout=8
+        )
 
         if res.status_code != 200:
             raise HTTPException(
@@ -88,7 +95,6 @@ async def processar_nota(
         xml_base64 = None
         pdf_base64 = None
 
-        # Trata resposta caso a API devolva o PDF direto em binário
         if "application/pdf" in content_type:
             pdf_base64 = base64.b64encode(res.content).decode("utf-8")
         else:
@@ -120,17 +126,4 @@ async def processar_nota(
             if not xml_base64 and not pdf_base64:
                 raise HTTPException(
                     status_code=422,
-                    detail=f"A API respondeu sem XML/PDF nos campos esperados. Campos recebidos: {list(dados.keys())} | Amostra: {str(dados)[:300]}"
-                )
-
-        return {
-            "status": "sucesso",
-            "chave_acesso": chave_acesso,
-            "xml_base64": xml_base64,
-            "pdf_base64": pdf_base64
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro ao consultar NF-e: {str(e)}")
+                    detail=f"A API respondeu sem XML/PDF nos campos esperados. Campos: {list(dados.keys())} | Amostra: {str(dados)[:300]}"
