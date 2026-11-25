@@ -1,4 +1,5 @@
 import re
+import time
 import base64
 import requests
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
@@ -31,13 +32,30 @@ async def processar_nota(
             "Extraia EXCLUSIVAMENTE os 44 dígitos numéricos da Chave de Acesso da NF-e. "
             "Retorne apenas os 44 números seguidos, sem espaços, pontos, traços ou qualquer texto adicional."
         )
-        response = client.models.generate_content(
-            model="gemini-3.8-flash",
-            contents=[
-                types.Part.from_bytes(data=conteudo_imagem, mime_type=mime_type),
-                prompt,
-            ],
-        )
+
+        # Lista de modelos em ordem de prioridade (evita falha por pico de demanda 503)
+        modelos_tentativa = ["gemini-3.8-flash", "gemini-2.5-flash-lite", "gemini-3.0-flash"]
+        response = None
+        ultimo_erro = None
+
+        for modelo in modelos_tentativa:
+            try:
+                response = client.models.generate_content(
+                    model=modelo,
+                    contents=[
+                        types.Part.from_bytes(data=conteudo_imagem, mime_type=mime_type),
+                        prompt,
+                    ],
+                )
+                if response and response.text:
+                    break
+            except Exception as err:
+                ultimo_erro = err
+                time.sleep(1)
+
+        if not response or not response.text:
+            raise ultimo_erro or Exception("Nenhum modelo respondeu no momento.")
+
         chave_bruta = response.text.strip()
         chave_acesso = re.sub(r"\D", "", chave_bruta)
 
@@ -52,7 +70,7 @@ async def processar_nota(
         raise HTTPException(status_code=400, detail=f"Erro na API do Gemini: {str(e)}")
 
     try:
-        # Consulta gratuita na API pública ConsultaDanfe (não exige créditos)
+        # Consulta gratuita na API pública ConsultaDanfe
         url_consulta = "https://consultadanfe.com/api/v1/consulta"
         headers = {
             "Content-Type": "application/json",
@@ -78,7 +96,6 @@ async def processar_nota(
                 detail="A consulta retornou resposta, mas o XML da nota não estava disponível (verifique se a nota é recente)."
             )
 
-        # Converte o XML para Base64 caso venha em texto puro
         if xml_texto.strip().startswith("<"):
             xml_base64 = base64.b64encode(xml_texto.encode("utf-8")).decode("utf-8")
         else:
