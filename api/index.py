@@ -1,0 +1,87 @@
+import re
+import requests
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from google import genai
+from google.genai import types
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.post("/api/processar-nota")
+async def processar_nota(
+    imagem: UploadFile = File(...),
+    gemini_api_key: str = Form(...),
+    meudanfe_api_key: str = Form(...)
+):
+    conteudo_imagem = await imagem.read()
+    mime_type = imagem.content_type or "image/jpeg"
+
+    try:
+        client = genai.Client(api_key=gemini_api_key.strip())
+        prompt = (
+            "Analise esta imagem de uma DANFE ou documento fiscal. "
+            "Extraia EXCLUSIVAMENTE os 44 dígitos numéricos da Chave de Acesso da NF-e. "
+            "Retorne apenas os 44 números seguidos, sem espaços, pontos, traços ou qualquer texto adicional."
+        )
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=[
+                types.Part.from_bytes(data=conteudo_imagem, mime_type=mime_type),
+                prompt,
+            ],
+        )
+        chave_bruta = response.text.strip()
+        chave_acesso = re.sub(r"\D", "", chave_bruta)
+
+        if len(chave_acesso) != 44:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Não foi possível identificar uma chave válida de 44 dígitos. Leitura obtida: '{chave_bruta}'"
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Erro na API do Gemini: {str(e)}")
+
+    try:
+        url_meudanfe = f"https://api.meudanfe.com.br/v2/fd/get/xml/{chave_acesso}"
+        headers = {
+            "Api-Key": meudanfe_api_key.strip(),
+            "Accept": "application/json"
+        }
+        res_xml = requests.get(url_meudanfe, headers=headers, timeout=30)
+
+        if res_xml.status_code != 200:
+            raise HTTPException(
+                status_code=res_xml.status_code,
+                detail=f"Erro no MeuDanfe ({res_xml.status_code}): {res_xml.text}"
+            )
+
+        dados_xml = res_xml.json()
+        xml_base64 = dados_xml.get("data") or dados_xml.get("xml")
+
+        url_pdf = f"https://api.meudanfe.com.br/v2/fd/get/da/{chave_acesso}"
+        res_pdf = requests.get(url_pdf, headers=headers, timeout=30)
+        pdf_base64 = None
+        if res_pdf.status_code == 200:
+            dados_pdf = res_pdf.json()
+            pdf_base64 = dados_pdf.get("data") or dados_pdf.get("pdf")
+
+        return {
+            "status": "sucesso",
+            "chave_acesso": chave_acesso,
+            "xml_base64": xml_base64,
+            "pdf_base64": pdf_base64
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao comunicar com MeuDanfe: {str(e)}")
