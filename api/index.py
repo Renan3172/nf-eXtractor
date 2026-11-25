@@ -127,3 +127,21 @@ async def processar_nota(
                 raise HTTPException(
                     status_code=422,
                     detail=f"A API respondeu sem XML/PDF nos campos esperados. Campos: {list(dados.keys())} | Amostra: {str(dados)[:300]}"
+                )
+
+        return {
+            "status": "sucesso",
+            "chave_acesso": chave_acesso,
+            "xml_base64": xml_base64,
+            "pdf_base64": pdf_base64
+        }
+
+    except requests.Timeout:
+        raise HTTPException(
+            status_code=504,
+            detail="O servidor do ConsultaDanfe demorou mais de 8 segundos para responder. Tente enviar novamente."
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao consultar NF-e: {str(e)}")
