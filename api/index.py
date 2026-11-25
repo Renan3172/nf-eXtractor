@@ -1,4 +1,5 @@
 import re
+import base64
 import requests
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -51,41 +52,42 @@ async def processar_nota(
         raise HTTPException(status_code=400, detail=f"Erro na API do Gemini: {str(e)}")
 
     try:
+        chave_api = meudanfe_api_key.strip()
         headers = {
-            "Api-Key": meudanfe_api_key.strip(),
-            "Accept": "application/json"
+            "Api-Key": chave_api,
+            "Accept": "application/json, application/xml, text/plain"
         }
 
-        # Passo A: Solicitar a busca/adição da NF-e na base do MeuDanfe (obrigatório na API v2)
-        url_add = f"https://api.meudanfe.com.br/v2/fd/add/{chave_acesso}"
-        res_add = requests.put(url_add, headers=headers, timeout=30)
-
-        if res_add.status_code not in (200, 201, 202):
-            raise HTTPException(
-                status_code=res_add.status_code,
-                detail=f"Erro ao registrar nota no MeuDanfe ({res_add.status_code}): {res_add.text}"
-            )
-
-        # Passo B: Baixar o XML
-        url_meudanfe = f"https://api.meudanfe.com.br/v2/fd/get/xml/{chave_acesso}"
-        res_xml = requests.get(url_meudanfe, headers=headers, timeout=30)
+        # Consulta XML na rota pública/gratuita v1 do MeuDanfe
+        url_xml = f"https://api.meudanfe.com.br/v1/fd/get/xml/{chave_acesso}?api_key={chave_api}"
+        res_xml = requests.get(url_xml, headers=headers, timeout=30)
 
         if res_xml.status_code != 200:
             raise HTTPException(
                 status_code=res_xml.status_code,
-                detail=f"Erro ao baixar XML no MeuDanfe ({res_xml.status_code}): {res_xml.text}"
+                detail=f"Erro no MeuDanfe ({res_xml.status_code}): {res_xml.text}"
             )
 
-        dados_xml = res_xml.json()
-        xml_base64 = dados_xml.get("data") or dados_xml.get("xml")
+        # Trata retorno em JSON ou XML puro
+        xml_base64 = None
+        content_type_xml = res_xml.headers.get("Content-Type", "")
+        if "application/json" in content_type_xml:
+            dados_xml = res_xml.json()
+            xml_base64 = dados_xml.get("data") or dados_xml.get("xml")
+        else:
+            xml_base64 = base64.b64encode(res_xml.content).decode("utf-8")
 
-        # Passo C: Baixar o PDF (DANFE)
-        url_pdf = f"https://api.meudanfe.com.br/v2/fd/get/da/{chave_acesso}"
+        # Consulta PDF (DANFE) na rota v1
+        url_pdf = f"https://api.meudanfe.com.br/v1/fd/get/da/{chave_acesso}?api_key={chave_api}"
         res_pdf = requests.get(url_pdf, headers=headers, timeout=30)
         pdf_base64 = None
         if res_pdf.status_code == 200:
-            dados_pdf = res_pdf.json()
-            pdf_base64 = dados_pdf.get("data") or dados_pdf.get("pdf")
+            content_type_pdf = res_pdf.headers.get("Content-Type", "")
+            if "application/json" in content_type_pdf:
+                dados_pdf = res_pdf.json()
+                pdf_base64 = dados_pdf.get("data") or dados_pdf.get("pdf")
+            else:
+                pdf_base64 = base64.b64encode(res_pdf.content).decode("utf-8")
 
         return {
             "status": "sucesso",
