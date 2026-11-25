@@ -33,8 +33,7 @@ async def processar_nota(
             "Retorne apenas os 44 números seguidos, sem espaços, pontos, traços ou qualquer texto adicional."
         )
 
-        # Lista de modelos em ordem de prioridade (evita falha por pico de demanda 503)
-        modelos_tentativa = ["gemini-3.8-flash", "gemini-2.5-flash-lite", "gemini-3.0-flash"]
+        modelos_tentativa = ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3-flash"]
         response = None
         ultimo_erro = None
 
@@ -70,11 +69,10 @@ async def processar_nota(
         raise HTTPException(status_code=400, detail=f"Erro na API do Gemini: {str(e)}")
 
     try:
-        # Consulta gratuita na API pública ConsultaDanfe
         url_consulta = "https://consultadanfe.com/api/v1/consulta"
         headers = {
             "Content-Type": "application/json",
-            "Accept": "application/json",
+            "Accept": "application/json, application/pdf",
             "User-Agent": "ExtratorNFe/1.0"
         }
         payload = {"chave": chave_acesso}
@@ -86,20 +84,44 @@ async def processar_nota(
                 detail=f"Erro na consulta pública da NF-e ({res.status_code}): {res.text}"
             )
 
-        dados = res.json()
-        xml_texto = dados.get("xml") or dados.get("data", {}).get("xml")
-        pdf_base64 = dados.get("pdf") or dados.get("danfe") or dados.get("data", {}).get("pdf")
+        content_type = res.headers.get("Content-Type", "").lower()
+        xml_base64 = None
+        pdf_base64 = None
 
-        if not xml_texto:
-            raise HTTPException(
-                status_code=404,
-                detail="A consulta retornou resposta, mas o XML da nota não estava disponível (verifique se a nota é recente)."
+        # Trata resposta caso a API devolva o PDF direto em binário
+        if "application/pdf" in content_type:
+            pdf_base64 = base64.b64encode(res.content).decode("utf-8")
+        else:
+            dados = res.json()
+            bloco = dados.get("data") if isinstance(dados.get("data"), dict) else {}
+
+            xml_texto = (
+                dados.get("xml")
+                or dados.get("xml_base64")
+                or bloco.get("xml")
+                or bloco.get("xml_base64")
+            )
+            pdf_base64 = (
+                dados.get("pdf")
+                or dados.get("pdf_base64")
+                or dados.get("danfe")
+                or dados.get("danfe_base64")
+                or bloco.get("pdf")
+                or bloco.get("pdf_base64")
+                or bloco.get("danfe")
             )
 
-        if xml_texto.strip().startswith("<"):
-            xml_base64 = base64.b64encode(xml_texto.encode("utf-8")).decode("utf-8")
-        else:
-            xml_base64 = xml_texto
+            if xml_texto:
+                if xml_texto.strip().startswith("<"):
+                    xml_base64 = base64.b64encode(xml_texto.encode("utf-8")).decode("utf-8")
+                else:
+                    xml_base64 = xml_texto
+
+            if not xml_base64 and not pdf_base64:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"A API respondeu sem XML/PDF nos campos esperados. Campos recebidos: {list(dados.keys())} | Amostra: {str(dados)[:300]}"
+                )
 
         return {
             "status": "sucesso",
