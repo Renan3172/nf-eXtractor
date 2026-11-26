@@ -171,4 +171,186 @@
 
     function salvarChaves() {
       const gKey = document.getElementById('gemini-key').value.trim();
-      localStorage.setItem('gemini_api_
+      localStorage.setItem('gemini_api_key', gKey);
+      localStorage.removeItem('meudanfe_api_key');
+      atualizarIndicadorApi(gKey);
+      toggleConfig();
+      mostrarStatus('Credencial salva no navegador com sucesso.', 'bg-emerald-50 text-emerald-800 border border-emerald-200');
+    }
+
+    // Suporte a Ctrl+V direto na tela (compatível com WhatsApp Web, Prints e Arquivos)
+    document.addEventListener('paste', (e) => {
+      const clipboard = e.clipboardData || window.clipboardData;
+      if (!clipboard) return;
+
+      // 1. Verifica se há arquivo de imagem direto em files
+      if (clipboard.files && clipboard.files.length > 0) {
+        const file = clipboard.files[0];
+        if (file.type.startsWith('image/')) {
+          e.preventDefault();
+          carregarImagem(file);
+          return;
+        }
+      }
+
+      // 2. Verifica itens na área de transferência (prints e cópias de navegador)
+      if (clipboard.items) {
+        for (let i = 0; i < clipboard.items.length; i++) {
+          const item = clipboard.items[i];
+          if (item.type.startsWith('image/')) {
+            const blob = item.getAsFile();
+            if (blob) {
+              e.preventDefault();
+              carregarImagem(blob);
+              return;
+            }
+          }
+        }
+      }
+    });
+
+    function selecionarArquivo(e) {
+      if (e.target.files.length > 0) {
+        carregarImagem(e.target.files[0]);
+      }
+    }
+
+    function carregarImagem(file) {
+      arquivoAtual = file;
+      const preview = document.getElementById('preview');
+      preview.src = URL.createObjectURL(file);
+      preview.classList.remove('hidden');
+    }
+
+    function mostrarStatus(msg, classes) {
+      const box = document.getElementById('status-box');
+      box.className = `p-4 rounded-2xl text-sm font-semibold ${classes}`;
+      box.textContent = msg;
+      box.classList.remove('hidden');
+    }
+
+    function baixarBase64(base64Data, nomeArquivo, mimeType) {
+      const link = document.createElement('a');
+      link.href = `data:${mimeType};base64,${base64Data}`;
+      link.download = nomeArquivo;
+      link.click();
+    }
+
+    function copiarChave() {
+      const textoChave = document.getElementById('chave-texto').textContent;
+      navigator.clipboard.writeText(textoChave).then(() => {
+        const textoBotao = document.getElementById('texto-copiar');
+        textoBotao.textContent = 'Chave Copiada!';
+        setTimeout(() => {
+          textoBotao.textContent = 'Copiar Chave';
+        }, 1500);
+      });
+    }
+
+    function adicionarAoHistorico(chave, xml, pdf) {
+      if (historicoSessao.some(n => n.chave === chave)) return;
+
+      historicoSessao.unshift({ chave, xml, pdf });
+      if (historicoSessao.length > 5) historicoSessao.pop();
+
+      localStorage.setItem('historico_notas_logix', JSON.stringify(historicoSessao));
+      renderizarHistorico();
+    }
+
+    function recuperarHistorico() {
+      try {
+        historicoSessao = JSON.parse(localStorage.getItem('historico_notas_logix')) || [];
+        renderizarHistorico();
+      } catch (e) {
+        historicoSessao = [];
+      }
+    }
+
+    function renderizarHistorico() {
+      const secao = document.getElementById('historico-secao');
+      const corpo = document.getElementById('historico-corpo');
+      corpo.innerHTML = '';
+
+      if (historicoSessao.length === 0) {
+        secao.classList.add('hidden');
+        return;
+      }
+
+      historicoSessao.forEach(nota => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50/50 transition-colors';
+        
+        tr.innerHTML = `
+          <td class="py-3.5 pr-4 font-mono-fiscal text-sm sm:text-base text-black break-all select-all font-bold tracking-wider">${nota.chave}</td>
+          <td class="py-3.5 text-right space-x-1 shrink-0 whitespace-nowrap">
+            ${nota.xml ? `<button onclick="baixarBase64('${nota.xml}', '${nota.chave}.xml', 'application/xml')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-emerald-50 text-neutral-700 hover:text-emerald-700 border border-slate-200 hover:border-emerald-200 rounded-lg font-semibold transition-all cursor-pointer">XML</button>` : ''}
+            ${nota.pdf ? `<button onclick="baixarBase64('${nota.pdf}', '${nota.chave}.pdf', 'application/pdf')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-blue-50 text-neutral-700 hover:text-blue-700 border border-slate-200 hover:border-blue-200 rounded-lg font-semibold transition-all cursor-pointer">PDF</button>` : ''}
+          </td>
+        `;
+        corpo.appendChild(tr);
+      });
+
+      secao.classList.remove('hidden');
+    }
+
+    async function enviarNota() {
+      const gKey = localStorage.getItem('gemini_api_key');
+
+      if (!gKey) {
+        document.getElementById('painel-config').classList.remove('hidden');
+        mostrarStatus('Configure sua chave de API do Gemini antes de continuar.', 'bg-amber-50 text-amber-800 border border-amber-200');
+        return;
+      }
+
+      if (!arquivoAtual) {
+        mostrarStatus('Selecione ou cole (Ctrl+V) a foto da nota fiscal primeiro.', 'bg-amber-50 text-amber-800 border border-amber-200');
+        return;
+      }
+
+      const btn = document.getElementById('btn-processar');
+      const textoOriginal = btn.innerHTML;
+      btn.disabled = true;
+      btn.textContent = 'Processando imagem com Gemini e buscando nota...';
+      document.getElementById('resultado-box').classList.add('hidden');
+      mostrarStatus('Lendo chave de acesso e buscando documentos...', 'bg-neutral-100 text-neutral-800 border border-neutral-300');
+
+      const formData = new FormData();
+      formData.append('imagem', arquivoAtual);
+      formData.append('gemini_api_key', gKey);
+
+      try {
+        const res = await fetch('/api/processar-nota', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.detail || 'Erro ao processar a nota.');
+        }
+
+        document.getElementById('status-box').classList.add('hidden');
+        document.getElementById('chave-texto').textContent = data.chave_acesso;
+        document.getElementById('resultado-box').classList.remove('hidden');
+
+        if (data.xml_base64) {
+          document.getElementById('btn-xml').onclick = () => baixarBase64(data.xml_base64, `${data.chave_acesso}.xml`, 'application/xml');
+          baixarBase64(data.xml_base64, `${data.chave_acesso}.xml`, 'application/xml');
+        }
+
+        if (data.pdf_base64) {
+          document.getElementById('btn-pdf').onclick = () => baixarBase64(data.pdf_base64, `${data.chave_acesso}.pdf`, 'application/pdf');
+        }
+
+        adicionarAoHistorico(data.chave_acesso, data.xml_base64 || null, data.pdf_base64 || null);
+
+      } catch (err) {
+        mostrarStatus(err.message, 'bg-red-50 text-red-800 border border-red-200');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = textoOriginal;
+      }
+    }
+  </script>
+</body>
+</html>
