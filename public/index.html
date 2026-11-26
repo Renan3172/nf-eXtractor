@@ -118,24 +118,6 @@
       </div>
     </div>
 
-    <!-- Histórico de Notas (Sessão) -->
-    <div id="historico-secao" class="hidden bg-white border border-slate-200/90 rounded-2xl p-6 shadow-sm space-y-4">
-      <h3 class="text-xs font-bold uppercase tracking-wider text-neutral-500">Histórico de Notas Recentes</h3>
-      <div class="overflow-x-auto">
-        <table class="w-full text-left text-xs border-collapse">
-          <thead>
-            <tr class="border-b border-slate-100 text-neutral-400 font-bold uppercase">
-              <th class="py-2.5 font-medium">Chave de Acesso</th>
-              <th class="py-2.5 font-medium text-right">Ações</th>
-            </tr>
-          </thead>
-          <tbody id="historico-corpo" class="divide-y divide-slate-50 font-medium text-neutral-800">
-            <!-- Linhas inseridas pelo JavaScript -->
-          </tbody>
-        </table>
-      </div>
-    </div>
-
   </main>
 
   <!-- Rodapé -->
@@ -147,7 +129,6 @@
 
   <script>
     let arquivoAtual = null;
-    let historicoSessao = [];
 
     function atualizarIndicadorApi(gKey) {
       const dot = document.getElementById('status-dot');
@@ -163,13 +144,13 @@
 
     // Carregar chave salva ao abrir a página
     window.onload = () => {
+      localStorage.removeItem('historico_notas_logix');
       const gKey = localStorage.getItem('gemini_api_key') || '';
       document.getElementById('gemini-key').value = gKey;
       atualizarIndicadorApi(gKey);
       if (!gKey) {
         document.getElementById('painel-config').classList.remove('hidden');
       }
-      recuperarHistorico();
     };
 
     function toggleConfig() {
@@ -252,52 +233,6 @@
       });
     }
 
-    function adicionarAoHistorico(chave, xml, pdf) {
-      if (historicoSessao.some(n => n.chave === chave)) return;
-
-      historicoSessao.unshift({ chave, xml, pdf });
-      if (historicoSessao.length > 5) historicoSessao.pop();
-
-      localStorage.setItem('historico_notas_logix', JSON.stringify(historicoSessao));
-      renderizarHistorico();
-    }
-
-    function recuperarHistorico() {
-      try {
-        historicoSessao = JSON.parse(localStorage.getItem('historico_notas_logix')) || [];
-        renderizarHistorico();
-      } catch (e) {
-        historicoSessao = [];
-      }
-    }
-
-    function renderizarHistorico() {
-      const secao = document.getElementById('historico-secao');
-      const corpo = document.getElementById('historico-corpo');
-      corpo.innerHTML = '';
-
-      if (historicoSessao.length === 0) {
-        secao.classList.add('hidden');
-        return;
-      }
-
-      historicoSessao.forEach(nota => {
-        const tr = document.createElement('tr');
-        tr.className = 'hover:bg-slate-50/50 transition-colors';
-        
-        tr.innerHTML = `
-          <td class="py-3.5 pr-4 font-mono-fiscal text-sm sm:text-base text-black break-all select-all font-bold tracking-wider">${nota.chave}</td>
-          <td class="py-3.5 text-right space-x-1 shrink-0 whitespace-nowrap">
-            ${nota.xml ? `<button onclick="baixarBase64('${nota.xml}', '${nota.chave}.xml', 'application/xml')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-emerald-50 text-neutral-700 hover:text-emerald-700 border border-slate-200 hover:border-emerald-200 rounded-lg font-semibold transition-all cursor-pointer">XML</button>` : ''}
-            ${nota.pdf ? `<button onclick="baixarBase64('${nota.pdf}', '${nota.chave}.pdf', 'application/pdf')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-blue-50 text-neutral-700 hover:text-blue-700 border border-slate-200 hover:border-blue-200 rounded-lg font-semibold transition-all cursor-pointer">PDF</button>` : ''}
-          </td>
-        `;
-        corpo.appendChild(tr);
-      });
-
-      secao.classList.remove('hidden');
-    }
-
     async function enviarNota() {
       const gKey = localStorage.getItem('gemini_api_key');
 
@@ -346,8 +281,6 @@
         if (data.pdf_base64) {
           document.getElementById('btn-pdf').onclick = () => baixarBase64(data.pdf_base64, `${data.chave_acesso}.pdf`, 'application/pdf');
         }
-
-        adicionarAoHistorico(data.chave_acesso, data.xml_base64 || null, data.pdf_base64 || null);
 
       } catch (err) {
         mostrarStatus(err.message, 'bg-red-50 text-red-800 border border-red-200');
