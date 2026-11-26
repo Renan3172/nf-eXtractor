@@ -15,6 +15,35 @@
 </head>
 <body class="bg-slate-50 text-black min-h-screen flex flex-col antialiased">
 
+  <!-- Modal de Disclaimer (Primeiro Acesso) -->
+  <div id="modal-disclaimer" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-black text-white flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <h2 class="text-base font-bold text-black tracking-tight">Aviso Importante de Uso</h2>
+      </div>
+
+      <div class="space-y-2.5 text-sm text-neutral-700 leading-relaxed">
+        <p>
+          O <strong class="text-black">NF-eXtractor</strong> utiliza Inteligência Artificial para leitura e reconhecimento óptico da chave de acesso a partir de imagens e, por sua natureza probabilística, <strong class="text-black">pode cometer erros de interpretação</strong>.
+        </p>
+        <p>
+          Sempre confira a chave de acesso e valide os dados do arquivo <strong class="text-black">XML / PDF</strong> baixado antes de utilizá-lo em emissões fiscais ou ambientes de produção.
+        </p>
+      </div>
+
+      <div class="pt-2">
+        <button onclick="aceitarDisclaimer()" class="w-full py-3 px-5 bg-black hover:bg-neutral-800 text-white text-sm font-semibold rounded-xl transition-all cursor-pointer">
+          Estou ciente, continuar
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Barra Superior -->
   <header class="bg-white border-b border-slate-200/90 px-6 py-4 shadow-sm">
     <div class="max-w-3xl mx-auto flex justify-between items-center gap-4">
@@ -78,7 +107,7 @@
         Clique para selecionar a foto da nota ou pressione 
         <kbd class="px-2 py-1 bg-slate-50 border border-slate-200 rounded-md text-xs font-mono text-neutral-600 shadow-sm">Ctrl + V</kbd>
       </p>
-      <p class="text-xs text-neutral-500 mt-2">Suporta imagens JPG, PNG ou WEBP recebidas pelo WhatsApp</p>
+      <p class="text-xs text-neutral-500 mt-2">Suporta imagens JPG, PNG ou WEBP enviadas/recebidas pelo WhatsApp</p>
       <img id="preview" class="hidden max-h-64 mx-auto mt-5 rounded-xl border border-slate-200/80 shadow-md" />
     </div>
 
@@ -121,14 +150,26 @@
   </main>
 
   <!-- Rodapé -->
-  <footer class="max-w-3xl w-full mx-auto px-6 pb-6 pt-2 text-right">
-    <p class="text-xs text-neutral-500">
+  <footer class="max-w-3xl w-full mx-auto px-6 pb-6 pt-2 flex items-center justify-between text-xs text-neutral-500">
+    <button onclick="abrirDisclaimer()" class="hover:text-black underline underline-offset-2 cursor-pointer">
+      Termos de Uso / Aviso de IA
+    </button>
+    <p>
       Desenvolvido por: <span class="font-semibold text-black">Renan Oteka</span>
     </p>
   </footer>
 
   <script>
     let arquivoAtual = null;
+
+    function abrirDisclaimer() {
+      document.getElementById('modal-disclaimer').classList.remove('hidden');
+    }
+
+    function aceitarDisclaimer() {
+      localStorage.setItem('nfe_disclaimer_aceito', 'true');
+      document.getElementById('modal-disclaimer').classList.add('hidden');
+    }
 
     function atualizarIndicadorApi(gKey) {
       const dot = document.getElementById('status-dot');
@@ -142,9 +183,14 @@
       }
     }
 
-    // Carregar chave salva ao abrir a página
+    // Carregar chave salva e verificar aceite do disclaimer ao abrir a página
     window.onload = () => {
       localStorage.removeItem('historico_notas_logix');
+
+      if (!localStorage.getItem('nfe_disclaimer_aceito')) {
+        abrirDisclaimer();
+      }
+
       const gKey = localStorage.getItem('gemini_api_key') || '';
       document.getElementById('gemini-key').value = gKey;
       atualizarIndicadorApi(gKey);
