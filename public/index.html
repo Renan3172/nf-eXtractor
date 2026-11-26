@@ -3,33 +3,59 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Automação CT-e / NF-e - Extrator XML & PDF</title>
+  <title>LOGIX FISCAL - Extrator XML & PDF</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .font-mono-fiscal { font-family: 'JetBrains Mono', monospace; }
+  </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased">
 
   <!-- Barra Superior -->
-  <header class="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center">
-    <div>
-      <h1 class="text-lg font-bold text-slate-900">Extrator Fiscal NF-e</h1>
-      <p class="text-xs text-slate-500">Leitura de Chave via IA + Download XML/PDF</p>
+  <header class="bg-white border-b border-slate-200/90 px-6 py-4 shadow-sm">
+    <div class="max-w-3xl mx-auto flex justify-between items-center gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-sm shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-base sm:text-lg font-bold text-slate-900 tracking-tight">LOGIX FISCAL</h1>
+          <p class="text-xs text-slate-500">Leitura de Chave via IA + Download XML e DANFE</p>
+        </div>
+      </div>
+
+      <button onclick="toggleConfig()" class="inline-flex items-center gap-2 px-3.5 py-2.5 text-xs sm:text-sm font-semibold bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl border border-slate-200 shadow-sm transition-all duration-200 cursor-pointer">
+        <span id="status-dot" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+        <span id="status-api-texto">Configurar API</span>
+        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+        </svg>
+      </button>
     </div>
-    <button onclick="toggleConfig()" class="px-4 py-2 text-sm font-medium bg-slate-100 hover:bg-slate-200 rounded-lg border border-slate-300 transition">
-      Configurar API
-    </button>
   </header>
 
-  <!-- Menu de Configuração (BYOK) -->
-  <section id="painel-config" class="hidden bg-white border-b border-slate-200 px-6 py-5 shadow-sm">
+  <!-- Menu de Configuração -->
+  <section id="painel-config" class="hidden bg-white border-b border-slate-200/85 px-6 py-5 shadow-sm transition-all duration-300">
     <div class="max-w-3xl mx-auto space-y-4">
-      <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-600">Credencial de Integração (Salva apenas neste navegador)</h2>
-      <div>
-        <label class="block text-xs font-medium text-slate-700 mb-1">Google Gemini API Key</label>
-        <input type="password" id="gemini-key" placeholder="AIzaSy..." class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-600" />
+      <div class="flex items-center justify-between">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500">Credencial de Integração (Local)</h2>
       </div>
-      <div class="flex justify-end gap-2">
-        <button onclick="salvarChaves()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition">
-          Salvar Credencial
+      <div class="relative">
+        <label class="block text-xs font-semibold text-slate-700 mb-1.5">Google Gemini API Key</label>
+        <input type="password" id="gemini-key" placeholder="AIzaSy..." class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600/15 focus:border-blue-600/80 transition-all" />
+      </div>
+      <div class="flex justify-end">
+        <button onclick="salvarChaves()" class="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl shadow-sm transition-all cursor-pointer">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+          Salvar Chave
         </button>
       </div>
     </div>
@@ -38,33 +64,78 @@
   <!-- Área Principal -->
   <main class="flex-1 max-w-3xl w-full mx-auto px-6 py-8 space-y-6">
     
-    <!-- Área de Upload / Ctrl+V -->
-    <div id="dropzone" onclick="document.getElementById('file-input').click()" class="border-2 border-dashed border-slate-300 hover:border-blue-500 bg-white rounded-xl p-10 text-center cursor-pointer transition">
+    <!-- Área de Upload -->
+    <div id="dropzone" onclick="document.getElementById('file-input').click()" class="group border-2 border-dashed border-slate-300 hover:border-blue-500/80 hover:bg-blue-50/25 bg-white rounded-2xl p-10 text-center cursor-pointer shadow-xs transition-all duration-200">
       <input type="file" id="file-input" accept="image/*" class="hidden" onchange="selecionarArquivo(event)" />
-      <p class="text-base font-medium text-slate-700">Clique para selecionar a foto da nota ou pressione <kbd class="px-2 py-1 bg-slate-100 border rounded text-xs">Ctrl + V</kbd></p>
-      <p class="text-xs text-slate-400 mt-2">Suporta imagens JPG, PNG ou WEBP enviadas/recebidas pelo WhatsApp</p>
-      <img id="preview" class="hidden max-h-64 mx-auto mt-4 rounded-lg border border-slate-200" />
+      
+      <div class="w-14 h-14 mx-auto mb-4 rounded-2xl bg-slate-100 group-hover:bg-blue-100 text-slate-500 group-hover:text-blue-600 flex items-center justify-center transition-all">
+        <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      </div>
+
+      <p class="text-sm sm:text-base font-medium text-slate-700 group-hover:text-slate-800 transition-colors">
+        Clique para selecionar a foto da nota ou pressione 
+        <kbd class="px-2 py-1 bg-slate-50 border border-slate-200 rounded-md text-xs font-mono text-slate-500 shadow-sm">Ctrl + V</kbd>
+      </p>
+      <p class="text-xs text-slate-400/90 mt-2">Suporta imagens JPG, PNG ou WEBP enviadas/recebidas pelo WhatsApp</p>
+      <img id="preview" class="hidden max-h-64 mx-auto mt-5 rounded-xl border border-slate-200/80 shadow-md" />
     </div>
 
-    <button id="btn-processar" onclick="enviarNota()" class="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-medium rounded-xl transition disabled:opacity-50">
-      Extrair Chave e Baixar XML / PDF
+    <button id="btn-processar" onclick="enviarNota()" class="w-full py-3.5 px-6 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-sm sm:text-base rounded-2xl shadow-sm transition-all duration-150 disabled:opacity-50 inline-flex items-center justify-center gap-2.5 cursor-pointer">
+      <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+      </svg>
+      <span>Extrair Chave e Baixar XML / PDF</span>
     </button>
 
     <!-- Status e Resultados -->
-    <div id="status-box" class="hidden p-4 rounded-xl text-sm"></div>
+    <div id="status-box" class="hidden p-4 rounded-2xl text-sm font-medium"></div>
 
-    <div id="resultado-box" class="hidden bg-white border border-slate-200 rounded-xl p-6 space-y-4">
+    <div id="resultado-box" class="hidden bg-white border border-slate-200/90 rounded-2xl p-6 shadow-sm space-y-5">
       <div>
-        <span class="text-xs font-semibold uppercase text-slate-400">Chave de Acesso Identificada</span>
-        <p id="chave-texto" class="font-mono text-base font-bold text-slate-900 break-all mt-1"></p>
+        <div class="flex justify-between items-center">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Chave de Acesso Identificada</span>
+          <button id="btn-copiar" onclick="copiarChave()" class="text-xs font-semibold text-blue-600 hover:text-blue-700 inline-flex items-center gap-1.5 cursor-pointer">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+            </svg>
+            <span id="texto-copiar">Copiar Chave</span>
+          </button>
+        </div>
+        <p id="chave-texto" class="font-mono-fiscal text-sm sm:text-base font-bold text-slate-900 bg-slate-50 border border-slate-150 rounded-xl px-4 py-3.5 break-all mt-2 tracking-wide"></p>
       </div>
-      <div class="flex flex-wrap gap-3 pt-2">
-        <button id="btn-xml" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition">
+      <div class="flex flex-wrap gap-3 pt-1">
+        <button id="btn-xml" class="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl shadow-xs transition-all cursor-pointer">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
           Baixar XML
         </button>
-        <button id="btn-pdf" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition">
+        <button id="btn-pdf" class="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow-xs transition-all cursor-pointer">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+          </svg>
           Baixar PDF (DANFE)
         </button>
+      </div>
+    </div>
+
+    <!-- Histórico de Notas (Sessão) -->
+    <div id="historico-secao" class="hidden bg-white border border-slate-200/90 rounded-2xl p-6 shadow-sm space-y-4">
+      <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Histórico de Notas Recentes</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="border-b border-slate-100 text-slate-400 font-bold uppercase">
+              <th class="py-2.5 font-medium">Chave de Acesso</th>
+              <th class="py-2.5 font-medium text-right">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="historico-corpo" class="divide-y divide-slate-50 font-medium text-slate-700">
+            <!-- Linhas inseridas pelo JavaScript -->
+          </tbody>
+        </table>
       </div>
     </div>
 
@@ -72,14 +143,29 @@
 
   <script>
     let arquivoAtual = null;
+    let historicoSessao = [];
+
+    function atualizarIndicadorApi(gKey) {
+      const dot = document.getElementById('status-dot');
+      const texto = document.getElementById('status-api-texto');
+      if (gKey && gKey.trim().length > 0) {
+        dot.className = 'w-2 h-2 rounded-full bg-emerald-500';
+        texto.textContent = 'API Configurada';
+      } else {
+        dot.className = 'w-2 h-2 rounded-full bg-amber-500 animate-pulse';
+        texto.textContent = 'Configurar API';
+      }
+    }
 
     // Carregar chave salva ao abrir a página
     window.onload = () => {
       const gKey = localStorage.getItem('gemini_api_key') || '';
       document.getElementById('gemini-key').value = gKey;
+      atualizarIndicadorApi(gKey);
       if (!gKey) {
         document.getElementById('painel-config').classList.remove('hidden');
       }
+      recuperarHistorico();
     };
 
     function toggleConfig() {
@@ -90,8 +176,9 @@
       const gKey = document.getElementById('gemini-key').value.trim();
       localStorage.setItem('gemini_api_key', gKey);
       localStorage.removeItem('meudanfe_api_key');
+      atualizarIndicadorApi(gKey);
       toggleConfig();
-      mostrarStatus('Credencial salva no navegador com sucesso.', 'bg-emerald-50 text-emerald-800 border border-emerald-200');
+      mostrarStatus('Credencial salva no navegador com sucesso.', 'bg-emerald-50 text-emerald-800 border border-emerald-150');
     }
 
     // Suporte a Ctrl+V direto na tela
@@ -119,7 +206,7 @@
 
     function mostrarStatus(msg, classes) {
       const box = document.getElementById('status-box');
-      box.className = `p-4 rounded-xl text-sm ${classes}`;
+      box.className = `p-4 rounded-2xl text-sm font-semibold ${classes}`;
       box.textContent = msg;
       box.classList.remove('hidden');
     }
@@ -131,25 +218,84 @@
       link.click();
     }
 
+    function copiarChave() {
+      const textoChave = document.getElementById('chave-texto').textContent;
+      navigator.clipboard.writeText(textoChave).then(() => {
+        const textoBotao = document.getElementById('texto-copiar');
+        textoBotao.textContent = 'Chave Copiada!';
+        setTimeout(() => {
+          textoBotao.textContent = 'Copiar Chave';
+        }, 1500);
+      });
+    }
+
+    function adicionarAoHistorico(chave, xml, pdf) {
+      // Evita duplicados recentes
+      if (historicoSessao.some(n => n.chave === chave)) return;
+
+      historicoSessao.unshift({ chave, xml, pdf });
+      if (historicoSessao.length > 5) historicoSessao.pop(); // Limite de 5 itens na tela
+
+      localStorage.setItem('historico_notas_logix', JSON.stringify(historicoSessao));
+      renderizarHistorico();
+    }
+
+    function recuperarHistorico() {
+      try {
+        historicoSessao = JSON.parse(localStorage.getItem('historico_notas_logix')) || [];
+        renderizarHistorico();
+      } catch (e) {
+        historicoSessao = [];
+      }
+    }
+
+    function renderizarHistorico() {
+      const secao = document.getElementById('historico-secao');
+      const corpo = document.getElementById('historico-corpo');
+      corpo.innerHTML = '';
+
+      if (historicoSessao.length === 0) {
+        secao.classList.add('hidden');
+        return;
+      }
+
+      historicoSessao.forEach(nota => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50/50 transition-colors';
+        
+        tr.innerHTML = `
+          <td class="py-3 font-mono text-slate-800 break-all select-all font-bold tracking-tight">${nota.chave}</td>
+          <td class="py-3 text-right space-x-1 shrink-0 whitespace-nowrap">
+            ${nota.xml ? `<button onclick="baixarBase64('${nota.xml}', '${nota.chave}.xml', 'application/xml')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 border border-slate-200 hover:border-emerald-200 rounded-lg font-semibold transition-all cursor-pointer">XML</button>` : ''}
+            ${nota.pdf ? `<button onclick="baixarBase64('${nota.pdf}', '${nota.chave}.pdf', 'application/pdf')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-700 border border-slate-200 hover:border-blue-200 rounded-lg font-semibold transition-all cursor-pointer">PDF</button>` : ''}
+          </td>
+        `;
+        corpo.appendChild(tr);
+      });
+
+      secao.classList.remove('hidden');
+    }
+
     async function enviarNota() {
       const gKey = localStorage.getItem('gemini_api_key');
 
       if (!gKey) {
         document.getElementById('painel-config').classList.remove('hidden');
-        mostrarStatus('Configure sua chave de API do Gemini antes de continuar.', 'bg-amber-50 text-amber-800 border border-amber-200');
+        mostrarStatus('Configure sua chave de API do Gemini antes de continuar.', 'bg-amber-50 text-amber-800 border border-amber-150');
         return;
       }
 
       if (!arquivoAtual) {
-        mostrarStatus('Selecione ou cole (Ctrl+V) a foto da nota fiscal primeiro.', 'bg-amber-50 text-amber-800 border border-amber-200');
+        mostrarStatus('Selecione ou cole (Ctrl+V) a foto da nota fiscal primeiro.', 'bg-amber-50 text-amber-800 border border-amber-150');
         return;
       }
 
       const btn = document.getElementById('btn-processar');
+      const textoOriginal = btn.innerHTML;
       btn.disabled = true;
       btn.textContent = 'Processando imagem com Gemini e buscando nota...';
       document.getElementById('resultado-box').classList.add('hidden');
-      mostrarStatus('Lendo chave de acesso e buscando documentos...', 'bg-blue-50 text-blue-800 border border-blue-200');
+      mostrarStatus('Lendo chave de acesso e buscando documentos...', 'bg-blue-50 text-blue-800 border border-blue-150');
 
       const formData = new FormData();
       formData.append('imagem', arquivoAtual);
@@ -172,7 +318,6 @@
 
         if (data.xml_base64) {
           document.getElementById('btn-xml').onclick = () => baixarBase64(data.xml_base64, `${data.chave_acesso}.xml`, 'application/xml');
-          // Dispara o download automático do XML assim que fica pronto
           baixarBase64(data.xml_base64, `${data.chave_acesso}.xml`, 'application/xml');
         }
 
@@ -180,11 +325,14 @@
           document.getElementById('btn-pdf').onclick = () => baixarBase64(data.pdf_base64, `${data.chave_acesso}.pdf`, 'application/pdf');
         }
 
+        // Salva e exibe no histórico local
+        adicionarAoHistorico(data.chave_acesso, data.xml_base64 || null, data.pdf_base64 || null);
+
       } catch (err) {
-        mostrarStatus(err.message, 'bg-red-50 text-red-800 border border-red-200');
+        mostrarStatus(err.message, 'bg-red-50 text-red-800 border border-red-150');
       } finally {
         btn.disabled = false;
-        btn.textContent = 'Extrair Chave e Baixar XML / PDF';
+        btn.innerHTML = textoOriginal;
       }
     }
   </script>
