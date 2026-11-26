@@ -138,6 +138,13 @@
 
   </main>
 
+  <!-- Rodapé -->
+  <footer class="max-w-3xl w-full mx-auto px-6 pb-6 pt-2 text-right">
+    <p class="text-xs text-neutral-500">
+      Desenvolvido por: <span class="font-semibold text-black">Renan Oteka</span>
+    </p>
+  </footer>
+
   <script>
     let arquivoAtual = null;
     let historicoSessao = [];
@@ -183,7 +190,6 @@
       const clipboard = e.clipboardData || window.clipboardData;
       if (!clipboard) return;
 
-      // 1. Verifica se há arquivo de imagem direto em files
       if (clipboard.files && clipboard.files.length > 0) {
         const file = clipboard.files[0];
         if (file.type.startsWith('image/')) {
@@ -193,7 +199,6 @@
         }
       }
 
-      // 2. Verifica itens na área de transferência (prints e cópias de navegador)
       if (clipboard.items) {
         for (let i = 0; i < clipboard.items.length; i++) {
           const item = clipboard.items[i];
