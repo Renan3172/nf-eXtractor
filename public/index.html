@@ -15,27 +15,21 @@
       <p class="text-xs text-slate-500">Leitura de Chave via IA + Download XML/PDF</p>
     </div>
     <button onclick="toggleConfig()" class="px-4 py-2 text-sm font-medium bg-slate-100 hover:bg-slate-200 rounded-lg border border-slate-300 transition">
-      Configurar APIs
+      Configurar API
     </button>
   </header>
 
   <!-- Menu de Configuração (BYOK) -->
   <section id="painel-config" class="hidden bg-white border-b border-slate-200 px-6 py-5 shadow-sm">
     <div class="max-w-3xl mx-auto space-y-4">
-      <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-600">Credenciais de Integração (Salvas apenas neste navegador)</h2>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label class="block text-xs font-medium text-slate-700 mb-1">Google Gemini API Key</label>
-          <input type="password" id="gemini-key" placeholder="AIzaSy..." class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-600" />
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-slate-700 mb-1">MeuDanfe API Key</label>
-          <input type="password" id="meudanfe-key" placeholder="Sua chave do MeuDanfe" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-600" />
-        </div>
+      <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-600">Credencial de Integração (Salva apenas neste navegador)</h2>
+      <div>
+        <label class="block text-xs font-medium text-slate-700 mb-1">Google Gemini API Key</label>
+        <input type="password" id="gemini-key" placeholder="AIzaSy..." class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-blue-600" />
       </div>
       <div class="flex justify-end gap-2">
         <button onclick="salvarChaves()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition">
-          Salvar Credenciais
+          Salvar Credencial
         </button>
       </div>
     </div>
@@ -79,13 +73,11 @@
   <script>
     let arquivoAtual = null;
 
-    // Carregar chaves salvas ao abrir a página
+    // Carregar chave salva ao abrir a página
     window.onload = () => {
       const gKey = localStorage.getItem('gemini_api_key') || '';
-      const mKey = localStorage.getItem('meudanfe_api_key') || '';
       document.getElementById('gemini-key').value = gKey;
-      document.getElementById('meudanfe-key').value = mKey;
-      if (!gKey || !mKey) {
+      if (!gKey) {
         document.getElementById('painel-config').classList.remove('hidden');
       }
     };
@@ -96,11 +88,10 @@
 
     function salvarChaves() {
       const gKey = document.getElementById('gemini-key').value.trim();
-      const mKey = document.getElementById('meudanfe-key').value.trim();
       localStorage.setItem('gemini_api_key', gKey);
-      localStorage.setItem('meudanfe_api_key', mKey);
+      localStorage.removeItem('meudanfe_api_key');
       toggleConfig();
-      mostrarStatus('Credenciais salvas no navegador com sucesso.', 'bg-emerald-50 text-emerald-800 border border-emerald-200');
+      mostrarStatus('Credencial salva no navegador com sucesso.', 'bg-emerald-50 text-emerald-800 border border-emerald-200');
     }
 
     // Suporte a Ctrl+V direto na tela
@@ -142,11 +133,10 @@
 
     async function enviarNota() {
       const gKey = localStorage.getItem('gemini_api_key');
-      const mKey = localStorage.getItem('meudanfe_api_key');
 
-      if (!gKey || !mKey) {
+      if (!gKey) {
         document.getElementById('painel-config').classList.remove('hidden');
-        mostrarStatus('Configure suas chaves de API do Gemini e do MeuDanfe antes de continuar.', 'bg-amber-50 text-amber-800 border border-amber-200');
+        mostrarStatus('Configure sua chave de API do Gemini antes de continuar.', 'bg-amber-50 text-amber-800 border border-amber-200');
         return;
       }
 
@@ -157,14 +147,13 @@
 
       const btn = document.getElementById('btn-processar');
       btn.disabled = true;
-      btn.textContent = 'Processando imagem com Gemini e consultando MeuDanfe...';
+      btn.textContent = 'Processando imagem com Gemini e buscando nota...';
       document.getElementById('resultado-box').classList.add('hidden');
       mostrarStatus('Lendo chave de acesso e buscando documentos...', 'bg-blue-50 text-blue-800 border border-blue-200');
 
       const formData = new FormData();
       formData.append('imagem', arquivoAtual);
       formData.append('gemini_api_key', gKey);
-      formData.append('meudanfe_api_key', mKey);
 
       try {
         const res = await fetch('/api/processar-nota', {
