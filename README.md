@@ -1,6 +1,6 @@
 # NF-eXtractor
 
-> **Nova versão disponível:** Este projeto evoluiu para o [NF-eXtractor 2](https://github.com/Renan3172/nfe-eXtractor2), com nova interface Neo-Brutalista, exibição de Remetente, Destinatário e Tomador do Frete diretamente na tela, extração de Número/Série/Modelo e suporte dedicado a CT-e.
+> **Nova versão disponível:** Este projeto evoluiu para o [NF-eXtractor 2](https://github.com/Renan3172/nfe-eXtractor2), com nova interface, exibição de Remetente, Destinatário e Tomador do Frete diretamente na tela, extração de Número/Série/Modelo e suporte dedicado a CT-e.
 
 Aplicação web para extração rápida da Chave de Acesso de Notas Fiscais Eletrônicas (NF-e) a partir de imagens (fotos ou capturas recebidas pelo WhatsApp) usando Google Gemini API, com consulta pública automática no ConsultaDanfe para download dos arquivos XML e PDF.
 
